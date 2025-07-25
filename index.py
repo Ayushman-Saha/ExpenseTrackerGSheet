@@ -1,9 +1,8 @@
 import streamlit as st
-import gspread
+from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 import pandas as pd
 from datetime import datetime
-import json
 
 # Set page config
 st.set_page_config(
@@ -13,9 +12,11 @@ st.set_page_config(
 )
 
 # Configuration
-SERVICE_ACCOUNT_FILE = 'subtle-photon-2025-259017038b64.json'
 SPREADSHEET_ID = '1jk-I4DZg2VXQnB8q6te-ylR14Ht48l6EsoYhlmrXGBg'
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+SHEET_NAME = 'Sheet1'
+
+SERVICE_ACCOUNT_FILE = dict(st.secrets["gcp_service_account"])
 
 
 # Google Sheets setup
@@ -23,32 +24,96 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 def init_gsheet():
     """Initialize Google Sheets connection"""
     try:
-        # Load credentials from JSON file
-        creds = Credentials.from_service_account_file(
+        # Load credentials from service account info
+        creds = Credentials.from_service_account_info(
             SERVICE_ACCOUNT_FILE, scopes=SCOPES
         )
 
-        # Use gspread for easier operations
-        gc = gspread.service_account(filename=SERVICE_ACCOUNT_FILE)
-        spreadsheet = gc.open_by_key(SPREADSHEET_ID)
-        worksheet = spreadsheet.worksheet("Sheet1")  # or get_worksheet(0)
+        # Build the service
+        service = build('sheets', 'v4', credentials=creds)
 
-        return worksheet
-    except FileNotFoundError:
-        st.error(f"Service account key file not found at {SERVICE_ACCOUNT_FILE}")
-        st.info("Please ensure the JSON key file is in the same directory as this script.")
-        return None
+        return service
     except Exception as e:
         st.error(f"Error connecting to Google Sheets: {str(e)}")
         return None
 
 
-def add_expense_to_sheet(worksheet, expense_data):
+def get_sheet_data(service, range_name='Sheet1!A:F'):
+    """Get data from Google Sheet"""
+    try:
+        result = service.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID,
+            range=range_name
+        ).execute()
+        values = result.get('values', [])
+        return values
+    except Exception as e:
+        st.error(f"Error getting sheet data: {str(e)}")
+        return []
+
+
+def append_to_sheet(service, values, range_name='Sheet1!A:F'):
+    """Append data to Google Sheet"""
+    try:
+        body = {
+            'values': [values]
+        }
+        result = service.spreadsheets().values().append(
+            spreadsheetId=SPREADSHEET_ID,
+            range=range_name,
+            valueInputOption='USER_ENTERED',
+            body=body
+        ).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error appending to sheet: {str(e)}")
+        return False
+
+
+def update_sheet_data(service, values, range_name='Sheet1!A:F'):
+    """Update entire sheet with new data"""
+    try:
+        body = {
+            'values': values
+        }
+        result = service.spreadsheets().values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=range_name,
+            valueInputOption='USER_ENTERED',
+            body=body
+        ).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error updating sheet: {str(e)}")
+        return False
+
+
+def clear_sheet(service, range_name='Sheet1!A:F'):
+    """Clear sheet data"""
+    try:
+        service.spreadsheets().values().clear(
+            spreadsheetId=SPREADSHEET_ID,
+            range=range_name
+        ).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error clearing sheet: {str(e)}")
+        return False
+
+
+def add_expense_to_sheet(service, expense_data):
     """Add expense data to Google Sheet"""
     try:
-        # Get current data to determine next serial number
-        existing_data = worksheet.get_all_records()
-        next_sl_no = len(existing_data) + 1
+        # Get current data
+        all_data = get_sheet_data(service)
+
+        # If no data exists, create headers
+        if not all_data:
+            headers = ['Sl No', 'Date', 'Item Description', 'Vendor', 'Bill Number', 'Amount']
+            all_data = [headers]
+
+        # Determine next serial number
+        next_sl_no = len(all_data)  # Since we include headers
 
         # Prepare row data
         row_data = [
@@ -61,10 +126,13 @@ def add_expense_to_sheet(worksheet, expense_data):
         ]
 
         # Add the new row
-        worksheet.append_row(row_data)
+        all_data.append(row_data)
 
-        # Sort the sheet by date (newest to oldest) and update serial numbers
-        sort_sheet_by_date(worksheet)
+        # Sort the data by date (newest to oldest) and update serial numbers
+        sorted_data = sort_data_by_date(all_data)
+
+        # Update the entire sheet with sorted data
+        update_sheet_data(service, sorted_data)
 
         return True
     except Exception as e:
@@ -72,14 +140,11 @@ def add_expense_to_sheet(worksheet, expense_data):
         return False
 
 
-def sort_sheet_by_date(worksheet):
-    """Sort sheet by date (newest to oldest) and update serial numbers"""
+def sort_data_by_date(all_data):
+    """Sort data by date (newest to oldest) and update serial numbers"""
     try:
-        # Get all data including headers
-        all_data = worksheet.get_all_values()
-
         if len(all_data) <= 1:  # Only headers or empty
-            return
+            return all_data
 
         headers = all_data[0]
         data_rows = all_data[1:]
@@ -87,12 +152,13 @@ def sort_sheet_by_date(worksheet):
         # Convert date strings to datetime objects for sorting
         def parse_date(date_str):
             try:
-                return datetime.strptime(date_str, '%d/%m/%Y')
+                return datetime.strptime(str(date_str), '%d/%m/%Y')
             except:
                 return datetime.min  # Put invalid dates at the end
 
         # Sort by date (newest first) - index 1 is the date column
-        sorted_rows = sorted(data_rows, key=lambda row: parse_date(row[1]) if len(row) > 1 else datetime.min,
+        sorted_rows = sorted(data_rows,
+                             key=lambda row: parse_date(row[1]) if len(row) > 1 else datetime.min,
                              reverse=True)
 
         # Update serial numbers
@@ -100,45 +166,67 @@ def sort_sheet_by_date(worksheet):
             if len(row) > 0:
                 row[0] = i  # Update serial number
 
-        # Clear the sheet and rewrite with sorted data
-        worksheet.clear()
-
-        # Write headers first
-        worksheet.append_row(headers)
-
-        # Write sorted data
-        for row in sorted_rows:
-            worksheet.append_row(row)
+        # Return headers + sorted data
+        return [headers] + sorted_rows
 
     except Exception as e:
-        st.error(f"Error sorting sheet: {str(e)}")
+        st.error(f"Error sorting data: {str(e)}")
+        return all_data
 
 
-def get_expenses_from_sheet(worksheet):
+def get_expenses_from_sheet(service):
     """Retrieve expenses from Google Sheet (already sorted)"""
     try:
-        # Ensure sheet is sorted before fetching
-        sort_sheet_by_date(worksheet)
+        # Get all data
+        all_data = get_sheet_data(service)
 
-        records = worksheet.get_all_records()
-        if records:
-            df = pd.DataFrame(records)
+        if len(all_data) <= 1:  # Only headers or empty
+            return pd.DataFrame()
+
+        # Sort data before returning
+        sorted_data = sort_data_by_date(all_data)
+
+        # Update sheet with sorted data
+        update_sheet_data(service, sorted_data)
+
+        # Convert to DataFrame
+        headers = sorted_data[0]
+        data_rows = sorted_data[1:]
+
+        if data_rows:
+            df = pd.DataFrame(data_rows, columns=headers)
             return df
         else:
             return pd.DataFrame()
+
     except Exception as e:
         st.error(f"Error retrieving expenses: {str(e)}")
         return pd.DataFrame()
 
 
-def setup_sheet_headers(worksheet):
+def setup_sheet_headers(service):
     """Setup headers if sheet is empty"""
     try:
-        if not worksheet.get_all_values():
+        all_data = get_sheet_data(service)
+        if not all_data:
             headers = ['Sl No', 'Date', 'Item Description', 'Vendor', 'Bill Number', 'Amount']
-            worksheet.append_row(headers)
+            append_to_sheet(service, headers)
     except Exception as e:
         st.error(f"Error setting up headers: {str(e)}")
+
+
+def manual_sort_sheet(service):
+    """Manually sort the sheet by date"""
+    try:
+        all_data = get_sheet_data(service)
+        if len(all_data) > 1:
+            sorted_data = sort_data_by_date(all_data)
+            update_sheet_data(service, sorted_data)
+            return True
+        return False
+    except Exception as e:
+        st.error(f"Error manually sorting sheet: {str(e)}")
+        return False
 
 
 # Main app
@@ -147,21 +235,20 @@ def main():
     st.markdown("---")
 
     # Initialize Google Sheets
-    worksheet = init_gsheet()
+    service = init_gsheet()
 
-    if worksheet is None:
+    if service is None:
         st.error("Could not connect to Google Sheets. Please check your configuration.")
         st.info("""
         To use this app, you need to:
-        1. Place your service account JSON file in the same directory as this script
-        2. Make sure the JSON file name matches: 'subtle-photon-2025-259017038b64.json'
-        3. Ensure your Google Sheet is shared with the service account email
-        4. Verify the SPREADSHEET_ID is correct
+        1. Add your service account credentials to Streamlit secrets
+        2. Ensure your Google Sheet is shared with the service account email
+        3. Verify the SPREADSHEET_ID is correct
         """)
         return
 
     # Setup headers if needed
-    setup_sheet_headers(worksheet)
+    setup_sheet_headers(service)
 
     # Create two columns
     col1, col2 = st.columns([1, 2])
@@ -232,7 +319,7 @@ def main():
                             'amount': amount
                         }
 
-                        if add_expense_to_sheet(worksheet, expense_data):
+                        if add_expense_to_sheet(service, expense_data):
                             st.success("✅ Expense added successfully!")
                             st.rerun()
                         else:
@@ -245,7 +332,7 @@ def main():
     with col2:
         st.subheader("Recent Expenses")
 
-        # Refresh button
+        # Refresh and sort buttons
         col_refresh, col_sort = st.columns([1, 1])
 
         with col_refresh:
@@ -254,18 +341,18 @@ def main():
 
         with col_sort:
             if st.button("📊 Sort by Date", key="sort"):
-                sort_sheet_by_date(worksheet)
-                st.success("✅ Sheet sorted by date!")
-                st.rerun()
+                if manual_sort_sheet(service):
+                    st.success("✅ Sheet sorted by date!")
+                    st.rerun()
 
         # Display expenses
-        expenses_df = get_expenses_from_sheet(worksheet)
+        expenses_df = get_expenses_from_sheet(service)
 
         if not expenses_df.empty:
             # Format amount column for better display
             if 'Amount' in expenses_df.columns:
                 expenses_df['Amount'] = expenses_df['Amount'].apply(
-                    lambda x: f"₹{float(x):,.2f}" if pd.notnull(x) else "₹0.00"
+                    lambda x: f"₹{float(x):,.2f}" if pd.notnull(x) and str(x).replace('.', '').isdigit() else "₹0.00"
                 )
 
             # Display as table
@@ -277,7 +364,7 @@ def main():
 
             # Summary statistics
             st.markdown("---")
-            col_a, col_b= st.columns(2)
+            col_a, col_b = st.columns(2)
 
             with col_a:
                 total_expenses = len(expenses_df)
@@ -285,10 +372,13 @@ def main():
 
             with col_b:
                 if 'Amount' in expenses_df.columns:
-                    # Convert back to float for calculation
-                    amounts = expenses_df['Amount'].str.replace('₹', '').str.replace(',', '').astype(float)
-                    total_amount = amounts.sum()
-                    st.metric("Total Amount", f"₹{total_amount:,.2f}")
+                    try:
+                        # Convert back to float for calculation
+                        amounts = expenses_df['Amount'].str.replace('₹', '').str.replace(',', '').astype(float)
+                        total_amount = amounts.sum()
+                        st.metric("Total Amount", f"₹{total_amount:,.2f}")
+                    except:
+                        st.metric("Total Amount", "₹0.00")
 
         else:
             st.info("No expenses recorded yet. Add your first expense using the form on the left!")
