@@ -19,6 +19,72 @@ SHEET_NAME = 'Sheet1'
 SERVICE_ACCOUNT_FILE = dict(st.secrets["gcp_service_account"])
 
 
+# Authentication function
+def check_login():
+    """Check if user is logged in"""
+    return st.session_state.get('authenticated', False)
+
+
+def login_page():
+    """Display login page"""
+    st.title("🔐 Login to Construction Expense Tracker")
+
+    # Center the login form
+    col1, col2, col3 = st.columns([1, 2, 1])
+
+    with col2:
+        st.markdown("""
+        <div style="
+            border: 2px solid #1f77b4;
+            border-radius: 15px;
+            padding: 30px;
+            background-color: #f8f9fa;
+            margin-top: 50px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        ">
+        """, unsafe_allow_html=True)
+
+        st.markdown("### Please enter your credentials")
+
+        with st.form("login_form"):
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+
+            login_button = st.form_submit_button("🚀 Login", use_container_width=True, type="primary")
+
+            if login_button:
+                # Get credentials from secrets
+                try:
+                    valid_username = st.secrets["auth"]["username"]
+                    valid_password = st.secrets["auth"]["password"]
+
+                    if username == valid_username and password == valid_password:
+                        st.session_state.authenticated = True
+                        st.success("✅ Login successful!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid username or password!")
+
+                except KeyError:
+                    st.error("❌ Authentication configuration not found. Please check your secrets.toml file.")
+                    st.info("""
+                    Add the following to your secrets.toml file:
+                    ```
+                    [auth]
+                    username = "your_username"
+                    password = "your_password"
+                    ```
+                    """)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+
+def logout():
+    """Logout function"""
+    st.session_state.authenticated = False
+    st.rerun()
+
+
 # Google Sheets setup
 @st.cache_resource
 def init_gsheet():
@@ -229,8 +295,14 @@ def manual_sort_sheet(service):
         return False
 
 
-# Main app
-def main():
+def expense_tracker_app():
+    """Main expense tracker application"""
+    # Add logout button in sidebar
+    with st.sidebar:
+        st.markdown("### User Options")
+        if st.button("🚪 Logout", type="secondary", use_container_width=True):
+            logout()
+
     st.title("💰 Construction Expense Tracker")
     st.markdown("---")
 
@@ -382,6 +454,19 @@ def main():
 
         else:
             st.info("No expenses recorded yet. Add your first expense using the form on the left!")
+
+
+# Main app
+def main():
+    # Initialize session state
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+
+    # Check authentication
+    if not check_login():
+        login_page()
+    else:
+        expense_tracker_app()
 
 
 if __name__ == "__main__":
