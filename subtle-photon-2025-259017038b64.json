@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "subtle-photon-2025",
+  "private_key_id": "259017038b64f609ece4c537e64e473404004f08",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDMwr7+y9wx69NQ\n1ZmfH8ZQd6dtpH6hImLPeVwhf9HnZgWTwR5fxD5ENaAlLmwKWMQmFbXlplsrHW4g\nuNPK22/NJrfntIrZtgg4faiktl03vDqyTiLsQxdsAaKDCsOs0noYI6UdEbHM5ETA\nIWHDtJvP254iKKrGmin1mzZAOTTXpzTYlXe6X3ThKIzGlpiqDZKbqTMOo+p2YFvK\nFiuzd6qaxzgYTaTgDZI/0VL5A31UjHtOtnL4CqEJy/3IjScRdUSc3GjjNxvl4rCj\ntPYokl2ireFkVmaj5XcpdCu2sbLp5Sr8VAkFJY4hos7NNUy0sSD57OrlECsLvt00\niNrVU4m9AgMBAAECggEAHxBadoBJ/x7WV7iYDj59UR7d/THL7jkvwWcZdZGVMCRX\nq0NMjt3QTnvOOGXTCTzPQTHg/x6eTSuxVfCEXQ2uZ/K8SsAmooHNvHg/2gE6oiaB\nxyQ4gxxolL+ovnWnGvRxhnD97yuMjFeDIJzP3qdrTfz1AByoT+n6fKLX96VWIXMc\naeLARnEctcNkyDHLcpr2NcwEYIYstXrfGcLBiOG+7qMSsffR362y46v7iY6kYOMA\nwJ9VkLm4uKWB+PLjEaEDtaNrjM7v6rBhkC/2eKn2PKo2jjPySYQAc78u3Uiwh1SZ\nJra/260/Jf3DDac7w4YmkFjc0xHks/GBQS/XJACckQKBgQDyZMwU6aGRFTBo59Nv\nV5HONRj77ke+OeDq9FTN9TIQYy0h+6TpvM3+n2f9kQpbHG2Kjflp3T+xIEf/cpeq\nJB6BGvHej2jYEGbh9EodLZCyIjP4WTsax6OqrD1Acg7QqVqt68o3lvci/ZjmE2Tt\nRp1zclqOtUDFZ62zzU3PDO2BVQKBgQDYQSlowhtdPZsL/9wHxmqZFfQF7waEEmKC\nwJGBfamtT/joa8UE8cwe42X31jIq0X3/qGQzMDUsy/1UACuIXyfx7WKcjRUkwLXM\nYQbZ1vyZoSOO/eKMQdn1LXGOrdDPbgWJ+B5vGbmapxXx9W0acb+H7LL3MReJOpkA\n26XkWo0GyQKBgQCwBdLOPPs/SIvnIrLAYG9Zt+V0zgz7bzyOYvBSwISiseLMktmn\ng5x0E36I/RLwJyzFOWSuJCVkk3S1ZJoOzDv6tX5/iNUyUnbkD2ri1XwGYCAtcV8i\ni2enQX0Zl7p6fQGE23318IN3vYGTUvIv/N/KPnjUuXtX33qc37JpcZHoIQKBgBR1\nVa2Lb3tKsLhZ5D74Dm2dHhDRpBQqiRdFkH5nnP3AaxPR3jmxhlYFvUfNA8H5P6pI\nC/KrxNwQEE86FOQ53FWO151n23A2qvxC0ZsaM5t1GyAT9LLAKBaBzhRpbS+ygOOk\njXyFOoHe/Lx/M2slB7GcOvIXutpIqODj5rXLuzvBAoGBAIwXdLbDLabwT69Ml50h\n7OTTqzcmkBYbndXz5mWikD2PSkbsQoMwa8w1nsDp6yUcJSh76mtfXD7M+nlUTHwl\nd1skpqAGRKokQBC7Y3ZQtSSKuQ5plKoCYO+v/hZQbJleqgNodEJngY4XDLOtEmfk\nH5E/CgDKAZZ9bc1lxKCE9A4q\n-----END PRIVATE KEY-----\n",
+  "client_email": "flutter-app@subtle-photon-2025.iam.gserviceaccount.com",
+  "client_id": "101385103621112702559",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/flutter-app%40subtle-photon-2025.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
